@@ -32,9 +32,16 @@ for atom in singleMolecule.getAtoms():
     scoreBank[counter,2] = atomScore
     counter += 1
 
+# For one molecule, this doesn't do anything (obviously)
+# Ideally, run scoreBank on multiple molecules before running unique
 uniqueGrids = np.unique(scoreBank[:,:-1], axis = 0)
+uniqueScores = len(uniqueGrids)
+# Find Best
+# Getting workable version -- not optimized
 
-print(uniqueGrids)
-print("\n\nUnique Grids length: " + str(len(uniqueGrids)))
-print(scoreBank)
-print("\n\nScore Bank length: " + str(len(scoreBank)))
+
+for row in scoreBank:
+    for i in range(len(uniqueGrids)):
+        if(np.all(row[:-1] == uniqueGrids[i])):
+            ##Append score here
+            
