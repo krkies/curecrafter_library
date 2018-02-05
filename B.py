@@ -22,3 +22,5 @@ atomScore = singleMolecule.getScore()
 for atom in singleMolecule.getAtoms():
     print("Atom Type: " + str(atom.getAtomType()))
     print("Grid Location: " + " " + str(atom.getGrid().getX()) + " " + str(atom.getGrid().getY()) + " " + str(atom.getGrid().getZ()))
+
+#Object with attributes, n-D array . . .
