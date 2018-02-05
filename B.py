@@ -35,7 +35,7 @@ for atom in singleMolecule.getAtoms():
 # For one molecule, this doesn't do anything (obviously)
 # Ideally, run scoreBank on multiple molecules before running unique
 uniqueGrids = np.unique(scoreBank[:,:-1], axis = 0)
-uniqueScores = len(uniqueGrids)
+uniqueScores = np.zeros([len(uniqueGrids),2], dtype = float)
 # Find Best
 # Getting workable version -- not optimized
 
@@ -43,5 +43,9 @@ uniqueScores = len(uniqueGrids)
 for row in scoreBank:
     for i in range(len(uniqueGrids)):
         if(np.all(row[:-1] == uniqueGrids[i])):
-            ##Append score here
-            
+            ##Average Score here
+            temp = (uniqueScores[i,0] * uniqueScores[i,1]) + float(row[2])
+            uniqueScores[i,1] += 1
+            uniqueScores[i,0] = temp/uniqueScores[i,1]
+
+print(uniqueScores)
