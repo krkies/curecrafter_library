@@ -18,9 +18,23 @@ filename = "Fixtures/molecule03.pdb"
 pdbfile = open(filename, "r")
 
 singleMolecule = Molecule('pdb', pdbfile, 100, 0.75, 18, -35, -18)
-atomScore = singleMolecule.getScore()
-for atom in singleMolecule.getAtoms():
-    print("Atom Type: " + str(atom.getAtomType()))
-    print("Grid Location: " + " " + str(atom.getGrid().getX()) + " " + str(atom.getGrid().getY()) + " " + str(atom.getGrid().getZ()))
+atomScore = str(singleMolecule.getScore())
 
-#Object with attributes, n-D array . . .
+# Just to get a working version, going to use a numpy array
+# Obviously not optimized -- object would probably be better
+import numpy as np
+scoreBank = np.empty([singleMolecule.getAtomCount(),3], dtype='<U100')
+
+counter = 0
+for atom in singleMolecule.getAtoms():
+    scoreBank[counter,0] = str(atom.getAtomType())
+    scoreBank[counter,1] = str(atom.getGrid().getX()) + " " + str(atom.getGrid().getY()) + " " + str(atom.getGrid().getZ())
+    scoreBank[counter,2] = atomScore
+    counter += 1
+
+uniqueGrids = np.unique(scoreBank[:,:-1], axis = 0)
+
+print(uniqueGrids)
+print("\n\nUnique Grids length: " + str(len(uniqueGrids)))
+print(scoreBank)
+print("\n\nScore Bank length: " + str(len(scoreBank)))
