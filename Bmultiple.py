@@ -92,11 +92,20 @@ newMolecule = np.column_stack((uniqueGridLocation, gridContents, molScore))
 for gridspot in range(len(uniqueGridLocation)):
     for i in range(len(uniqueDatabase[:,1])):
         if (newMolecule[gridspot,0] == uniqueDatabase[i,1]):
-            #This is where a threshold could be
+            #Possibly where a threshold could be
             if(float(uniqueDatabase[i,2]) > float(newMolecule[gridspot,2])):
                 newMolecule[gridspot, 1] = uniqueDatabase[i,0]
                 newMolecule[gridspot, 2] = float(uniqueDatabase[i,2])
 ## Need to compare scores and append the molecule type!!!!!
 
+##Another possible way to do threshold:
+thresholdScore = 135
+#need astype b/c scores are strings right now
+finalMolecule = np.delete(newMolecule, np.where(newMolecule[:, 2].astype(float)<thresholdScore), axis = 0)
+
 print(newMolecule)
 print(len(newMolecule[:,1]))
+print("HI")
+print("HI")
+print(finalMolecule)
+print(len(finalMolecule[:,1]))
