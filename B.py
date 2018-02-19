@@ -68,7 +68,7 @@ def produceBestMolecule(listOfFiles, listOfScores, threshold, gridSize, originX,
 
     #-------------------------
     # 5) Delete grids with atoms below threshold
-    finalMolecule = np.delete(newMolecule, np.where(newMolecule[:, 2].astype(float)<thresholdScore), axis = 0)
+    finalMolecule = np.delete(newMolecule, np.where(newMolecule[:, 2].astype(float)<threshold), axis = 0)
     #-------------------------
 
     return finalMolecule
