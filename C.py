@@ -1,4 +1,7 @@
 #Step C: Produce pdb file
+# In current form, I have all of stpe B from lines 10 - 65
+# True step C is only about 40 lines
+# Make sure that the first appearance of element name is not OA, HD, etc
 
 #open file
 writeOutFile = open("testPDB.pdb", "w")
@@ -8,6 +11,7 @@ originY = -35
 originZ = -18
 
 #_______________________________
+# from step B -- need an input new molecule
 
 from Molecule import Molecule
 import numpy as np
@@ -61,11 +65,8 @@ for gridspot in range(len(uniqueGridLocation)):
                 newMolecule[gridspot, 2] = float(uniqueDatabase[i,2])
 
 finalMolecule = np.delete(newMolecule, np.where(newMolecule[:, 2].astype(float)<thresholdScore), axis = 0)
-
-
 #_______________________________
 
-#ATOM      1  C   LIG    1       19.102 -34.723 -16.947  0.00  0.00    +0.172 C
 ATOM = "ATOM"
 alternateIndicator = " "
 residueName = "LIG"
@@ -79,7 +80,15 @@ segmentIdentifier = "0".ljust(4)
 pdbCounter = 1
 for row in finalMolecule:
     serialNumber = str(pdbCounter).rjust(5)
-    atomName = row[1].ljust(4)
+    atomName = row[1]
+    if (atomName == 'NA'):
+        atomName = 'N'.ljust(4)
+    elif (atomName == 'HD'):
+        atomName = 'H'.ljust(4)
+    elif (atomName == 'OA'):
+        atomName = 'O'.ljust(4)
+    else:
+        atomName = atomName.ljust(4)
 
     coords = row[0].split()
     if (float(coords[0]) < 0):
