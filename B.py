@@ -11,12 +11,14 @@
 from Molecule import Molecule
 import numpy as np
 
-def produceBestMolecule(listOfFiles, listOfScores, threshold, gridSize, originX, originY, originZ):
+# *** NOTE: needs to return Molecule type
+def generateMolecule(listOfFiles, listOfScores, threshold, gridSize, originX, originY, originZ):
 
     #-------------------------
     # 1) Initialize and Populate listOfMolecules with correct pdb files/scores
     listOfMolecules = []
     for i in range(len(listOfFiles)):
+        #construct new molecule for each pdb file
         listOfMolecules.append(Molecule('pdb', open(listOfFiles[i], "r"), listOfScores[i], gridSize, originX, originY, originZ))
     #-------------------------
 
