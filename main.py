@@ -1,6 +1,7 @@
 ## Test file to run through the pipeline
 # Input of four molecule files
 # Produce output PDB file
+from Network import Network
 from Molecule import Molecule
 from B import generateMolecule
 
