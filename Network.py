@@ -1,36 +1,8 @@
 from six.moves import urllib
 import json
 
-class Network(GraphQLClient):
-    def __init__(self):
-        self.endpoint = 'http://localhost:3000/graphql'
-        # self.endpoint = 'http://www.curecrafter.com/graphql'
-
-        client = GraphQLClient(self.endpoint)
-        queryName = 'boardQuery'
-
-    query = '''
-    query boardQuery($game: Int!) {{
-      boardQuery(game: $game) {{
-        score
-        molDock
-        dockEnded
-      }}
-    }}
-    '''
-
-    variables = { "game": 1 }
-
-    result = client.execute(query, variables)
-
-    parsed_json = json.loads(result)
-    print(parsed_json['data'][queryName][1])
-
-    return
-
-
-
 class GraphQLClient:
+
     def __init__(self, endpoint):
         self.endpoint = endpoint
         self.token = None
@@ -59,4 +31,42 @@ class GraphQLClient:
         except urllib.error.HTTPError as e:
             print((e.read()))
             print('')
-            raise e
+            # raise e
+
+class Network(GraphQLClient):
+
+    def __init__(self):
+        #self.endpoint = 'http://localhost:3000/graphql'
+        self.endpoint = 'http://www.curecrafter.com/graphql'
+
+        self.client = GraphQLClient(self.endpoint)
+        self.queryName = 'boardQuery'
+
+    def parseData(self, jsonData):
+            parsed_json = json.loads(jsonData)
+            # print parsed_json
+
+            for i in parsed_json:
+                print(parsed_json['data'][self.queryName][i]["score"])
+                # print i['score']
+
+            return parsed_json
+
+    def downloadMolecules(self):
+        query = '''
+        query boardQuery($game: Int!) {
+          boardQuery(game: $game) {
+            score
+            molDock
+            dockEnded
+          }
+        }
+        '''
+
+        variables = { "game": 1 }
+
+        result = self.client.execute(query, variables)
+
+        data = self.parseData(result)
+
+        return data
