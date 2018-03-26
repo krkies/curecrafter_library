@@ -1,5 +1,7 @@
 class Atom(object):
 
+    # Position: absolute coordinates of atom in molecule
+    # Grid: 3D grid position atom assigned
     def __init__(self, atomName, atomType, Position, Grid):
         self.atomName = atomName
         self.atomType = atomType
@@ -48,11 +50,10 @@ class Coordinate(object):
         self.y = y
         self.z = z
 
-# convert molecule from Molfile coordinate format to CureCrafter grid format
 class Molecule(Coordinate, Atom):
 
     def __init__(self, fileType, file, score, gridSize, originX, originY, originZ):
-        # NOTE: do not store file
+        # NOTE: do not store original file
         self.score = float(score)
         self.gridSize = float(gridSize)
         # Container is overall dimensions of container for all molecules
@@ -67,6 +68,7 @@ class Molecule(Coordinate, Atom):
         elif (fileType == 'pdb'):
             self.Atoms = self.parsePDBfile(file, self.gridSize, _xOrigin, _yOrigin, _zOrigin)
 
+    # convert molecule from Molfile coordinate format to CureCrafter grid format
     def parseMolfile(self, molfile, gridSize, originX, originY, originZ):
         # Split text file into array of lines
         _fileLines = molfile.readlines()
@@ -97,6 +99,7 @@ class Molecule(Coordinate, Atom):
 
         return _Atoms
 
+    # convert molecule from PDB coordinate format to CureCrafter grid format
     def parsePDBfile(self, pdbfile, gridSize, originX, originY, originZ):
         # Split text file into array of lines
         _fileLines = pdbfile.readlines()
@@ -119,60 +122,6 @@ class Molecule(Coordinate, Atom):
             _Atoms.append(Atom(_atomName,_atomType, _Position, _Grid))
 
         return _Atoms
-
-    def createPDB(self, moleculeArray, gridSize, originX, originY, originZ):
-        # overwrite atom type  *    **** use a map instead?  ****
-        _index = 1
-        for _row in moleculeArray:
-            _sequenceNumber = str(_index).rjust(5)
-            _atomName = _row[1]
-            if (_atomName == 'NA'):
-                _atomName = 'N'.ljust(4)
-            elif (_atomName == 'HD'):
-                _atomName = 'H'.ljust(4)
-            elif (_atomName == 'OA'):
-                _atomName = 'O'.ljust(4)
-            else:
-                _atomName = _atomName.ljust(4)
-
-            # grid coordinates
-            _coords = _row[0].split()
-            if (float(_coords[0]) < 0):
-                _xCoord = str(float(_coords[0]) * gridSize + originX - 0.5 * gridSize).rjust(8)
-            else:
-                _xCoord = str(float(_coords[0]) * gridSize + originX + 0.5 * gridSize).rjust(8)
-            if (float(_coords[1]) < 0):
-                _yCoord = str(float(_coords[1]) * gridSize + originY - 0.5 * gridSize).rjust(8)
-            else:
-                _yCoord = str(float(_coords[1]) * gridSize + originY + 0.5 * gridSize).rjust(8)
-            if (float(_coords[2]) < 0):
-                _zCoord = str(float(_coords[2]) * gridSize + originZ - 0.5 * gridSize).rjust(8)
-            else:
-                _zCoord = str(float(_coords[2]) * gridSize + originZ + 0.5 * gridSize).rjust(8)
-
-            # symbol?
-            _symbol = row[1].rjust(2)
-
-            # construct pdb atom entry
-            _alternateIndicator = " "
-            _chainIdentifier = " "
-            _residueSequence = "1".rjust(4)
-            _residueInsertions = " "
-            _occupancy = "0".rjust(6)
-            _temperatureFactor = "0".rjust(6)
-            _segmentIdentifier = "0".ljust(4)
-            _atomEntry = "ATOM" + "  " + _sequenceNumber + " " + _atomName + _alternateIndicator + "LIG" + " " + _chainIdentifier + _residueSequence + _residueInsertions + "   " + xCoord + yCoord + zCoord + _occupancy + _temperatureFactor + "      " + _segmentIdentifier + _symbol + "\n"
-
-            # insert atom row into pdb molecule
-            _moleculePDB.append(_atomEntry)
-
-            # increment row
-            _index += 1
-
-        # append pdb termination line
-        _moleculePDB.append("END" + "\n")
-
-        return _moleculePDB
 
     def calculateGrid(self, posX, posY, posZ, gridSize, originX, originY, originZ):
         _gridSize = float(gridSize)
