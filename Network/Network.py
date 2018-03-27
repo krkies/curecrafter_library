@@ -14,11 +14,8 @@ class GraphQLClient:
         self.token = token
 
     def _send(self, query, variables):
-        data = {'query': query,
-                'variables': variables
-                }
-        headers = {'Accept': 'application/json',
-                   'Content-Type': 'application/json'}
+        data = {'query': query, 'variables': variables}
+        headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
 
         if self.token is not None:
             headers['Authorization'] = '{}'.format(self.token)
@@ -42,16 +39,6 @@ class Network(GraphQLClient):
         self.client = GraphQLClient(self.endpoint)
         self.queryName = 'boardQuery'
 
-    def parseData(self, jsonData):
-            parsed_json = json.loads(jsonData)
-            # print parsed_json
-
-            for i in parsed_json:
-                print(parsed_json['data'][self.queryName][i]["score"])
-                # print i['score']
-
-            return parsed_json
-
     def downloadMolecules(self):
         query = '''
         query boardQuery($game: Int!) {
@@ -65,8 +52,6 @@ class Network(GraphQLClient):
 
         variables = { "game": 1 }
 
-        result = self.client.execute(query, variables)
-
-        data = self.parseData(result)
+        data = self.client.execute(query, variables)
 
         return data

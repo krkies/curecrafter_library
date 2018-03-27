@@ -52,10 +52,11 @@ class Coordinate(object):
 
 class Molecule(Coordinate, Atom):
 
-    def __init__(self, fileType, file, score, gridSize, originX, originY, originZ):
+    def __init__(self, fileType, file, score, dateCreated, gridSize, originX, originY, originZ):
         # NOTE: do not store original file
         self.score = float(score)
         self.gridSize = float(gridSize)
+        self.dateCreated = dateCreated
         # Container is overall dimensions of container for all molecules
         _xOrigin = float(originX)
         _yOrigin = float(originY)
@@ -99,15 +100,14 @@ class Molecule(Coordinate, Atom):
 
         return _Atoms
 
-    # convert molecule from PDB coordinate format to CureCrafter grid format
-    def parsePDBfile(self, pdbfile, gridSize, originX, originY, originZ):
-        # Split text file into array of lines
-        _fileLines = pdbfile.readlines()
-
+    # convert molecule from PDB coordinate format to grid format
+    def parsePDBfile(self, pdbFile, gridSize, originX, originY, originZ):
+        # Split pdb file into array of lines
+        atomArray = pdbFile.splitlines()
         # Extract atom block into array of Atom objects
         _Atoms = []
-        for i in range(len(_fileLines[:-1])):
-            _atomInfo = _fileLines[i].split()
+        for i in range(len(atomArray[:-1])):
+            _atomInfo = atomArray[i].split()
             # Extract atom type
             _atomName = _atomInfo[2]
             _atomType = _atomInfo[11]
@@ -206,11 +206,17 @@ class Molecule(Coordinate, Atom):
     def getScore(self):
         return self.score
 
+    def getDateCreated(self):
+        return self.dateCreated
+
     def getContainer(self):
         return self.Container
 
     def setScore(self, score):
         self.score = float(score)
+
+    def setDateCreated(self, date):
+        self.date = date
 
     def setGridSize(self, gridSize):
         self.gridSize = float(gridSize)
