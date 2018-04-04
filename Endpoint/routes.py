@@ -4,32 +4,24 @@ from GenMol import GenMol
 from datetime import datetime
 
 @app.route('/')
-def homepage():
-    the_time = datetime.now().strftime("%A, %d %b %Y %l:%M %p")
-
-    return """
-    <h1>Hello heroku</h1>
-    <p>It is currently {time}.</p>
-    """.format(time=the_time)
-
-@app.route('/test')
-def test():
-  return "test successful"
+def root():
+    return datetime.now().strftime("%A, %d %b %Y %l:%M %p")
 
 @app.route('/run')
 def run():
     # Score molecules must exceed
     thresholdValue = 135
-
     #Constants
-    gridSize = 0.1
+    gridSize = 1.5
     xOrigin = 18
     yOrigin = -35
     zOrigin = -18
 
     network = Network.Network()
     rawData = network.downloadMolecules()
-    moleculeCreated = GenMol.generateMolecule(rawData, gridSize, xOrigin, yOrigin, zOrigin)
+
+    moleculeGrid = GenMol.generateGrid(rawData, gridSize, xOrigin, yOrigin, zOrigin)
+    moleculeCreated = GenMol.generateMolecule(moleculeGrid, gridSize, xOrigin, yOrigin, zOrigin)
     print moleculeCreated
 
     return moleculeCreated

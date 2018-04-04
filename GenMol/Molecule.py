@@ -50,27 +50,133 @@ class Coordinate(object):
         self.y = y
         self.z = z
 
-class Molecule(Coordinate, Atom):
+class FormatPDB(object):
 
-    def __init__(self, fileType, file, score, dateCreated, gridSize, originX, originY, originZ):
-        # NOTE: do not store original file
-        self.score = float(score)
+    def __init__(self, moleculeArray, Container, gridSize):
+        self.moleculeArray = moleculeArray;
+        self.Container = Container
+        self.gridSize = gridSize
+        self.moleculePDB = ''
+        self.bonds = ''
+
+    def getPDB(self):
+        return self.moleculePDB
+
+    def createPDB(self):
+        for _index, _row in enumerate(self.moleculeArray):
+            _sequenceNumber = str(_index).rjust(5)
+            _atomName = self.getAtomName(_row[1])
+            _symbol = _row[1].ljust(2)
+            _coord = self.getCoordinates(_row[0])
+            _alternateIndicator = " "
+            _chainIdentifier = " "
+            _residueSequence = "1".rjust(4)
+            _residueInsertions = " "
+            _occupancy = "0".rjust(6)
+            _temperatureFactor = "0".rjust(6)
+            _segmentIdentifier = "0".ljust(4)
+            _atomEntry = "ATOM" + "  " + _sequenceNumber + "  " + _atomName + _alternateIndicator + "LIG" + _chainIdentifier + _residueSequence + _residueInsertions + "   " + _coord.getX() + _coord.getY() + _coord.getZ() + _occupancy + _temperatureFactor + "      " + _segmentIdentifier + "  " + _symbol + "\n"
+            self.moleculePDB += _atomEntry
+            #
+            self.bonds += self.getBonds(_row[0], _sequenceNumber)
+
+        # append bonds
+        self.moleculePDB += self.bonds
+        # append pdb termination line
+        self.moleculePDB += ("END" + "\n")
+        return self.moleculePDB
+
+    # overwrite atom type
+    def getAtomName(self, atomName):
+        _atomName = atomName.ljust(3)
+        if (atomName == 'NA'):
+            _atomName = 'N'.ljust(3)
+        elif (atomName == 'HD'):
+            _atomName = 'H'.ljust(3)
+        elif (atomName == 'OA'):
+            _atomName = 'O'.ljust(3)
+
+        return _atomName
+
+    def getCoordinates(self, CoordinateString):
+        _coordStr = CoordinateString.split()
+        _x = _coordStr[0]
+        _y = _coordStr[1]
+        _z = _coordStr[2]
+
+        _xCoord = self.getCoordinate(_x, self.Container.getX(), self.gridSize)
+        _yCoord = self.getCoordinate(_y, self.Container.getY(), self.gridSize)
+        _zCoord = self.getCoordinate(_z, self.Container.getZ(), self.gridSize)
+
+        return Coordinate(_xCoord, _yCoord, _zCoord)
+
+    def getCoordinate(self, coordinate, containerPosition, gridSize):
+        if (float(coordinate) < 0):
+            _coordinate = str(round(float(coordinate) * gridSize + containerPosition - 0.5 * gridSize,5)).rjust(8)
+        else:
+            _coordinate = str(round(float(coordinate) * gridSize + containerPosition + 0.5 * gridSize,5)).rjust(8)
+
+        return _coordinate
+
+    def getBonds(self, CoordinateString, sequenceNumber):
+        _coordStr = CoordinateString.split()
+        _x = _coordStr[0]
+        _y = _coordStr[1]
+        _z = _coordStr[2]
+
+        _coordNeighbors = self.getNeighboringCoordinates(_x, _y, _z)
+        _bonds = self.createBonds(_coordNeighbors, sequenceNumber)
+        return _bonds
+
+    def getNeighboringCoordinates(self, x, y, z):
+        _coordUp    = "{} {} {}".format(x, y, self.getIncrementValue(z))
+        _coordDown  = "{} {} {}".format(x, y, self.getDecrementValue(z))
+        _coordLeft  = "{} {} {}".format(x, self.getIncrementValue(y), z)
+        _coordRight = "{} {} {}".format(x, self.getDecrementValue(y), z)
+        _coordFront = "{} {} {}".format(self.getIncrementValue(x), y, z)
+        _coordBack  = "{} {} {}".format(self.getDecrementValue(x), y, z)
+
+        _coordArray = [_coordUp, _coordDown, _coordLeft, _coordRight, _coordFront, _coordBack]
+        return _coordArray
+
+    def createBonds(self, NeighborCoordinates, sequenceNumber):
+        _bondList = ''
+        _sequenceNumber = sequenceNumber.rjust(5)
+
+        for _index, _row in enumerate(self.moleculeArray):
+            _rowCoord = _row[0]
+            if _rowCoord in NeighborCoordinates:
+                _indexNumber = str(_index).rjust(5)
+                _bond = "CONECT" + " " + _sequenceNumber + " " + _indexNumber + "\n"
+                # prevent duplicate bonds
+                _bondInverse = "CONECT" + " " + _indexNumber + " " + _sequenceNumber + "\n"
+                if _bondInverse not in self.bonds:
+                    _bondList += _bond
+
+        return _bondList
+
+    def getIncrementValue(self, coordinate):
+        _value = int(coordinate) + 1
+        return str(_value)
+
+    def getDecrementValue(self, coordinate):
+        _value = int(coordinate) - 1
+        return str(_value)
+
+class Molecule(Coordinate, Atom, FormatPDB):
+
+    def __init__(self, gridSize, originX, originY, originZ):
         self.gridSize = float(gridSize)
-        self.dateCreated = dateCreated
         # Container is overall dimensions of container for all molecules
         _xOrigin = float(originX)
         _yOrigin = float(originY)
         _zOrigin = float(originZ)
         self.Container = Coordinate(_xOrigin, _yOrigin, _zOrigin)
 
-        # molecule datastructure: array of atom objects
-        if (fileType == 'molfile'):
-            self.Atoms = self.parseMolfile(file, self.gridSize, _xOrigin, _yOrigin, _zOrigin)
-        elif (fileType == 'pdb'):
-            self.Atoms = self.parsePDBfile(file, self.gridSize, _xOrigin, _yOrigin, _zOrigin)
-
     # convert molecule from Molfile coordinate format to CureCrafter grid format
-    def parseMolfile(self, molfile, gridSize, originX, originY, originZ):
+    def parseMolfile(self, molfile, score, dateCreated):
+        self.score = float(score)
+        self.dateCreated = dateCreated
         # Split text file into array of lines
         _fileLines = molfile.readlines()
         # Relevant information from Counts Line
@@ -89,7 +195,7 @@ class Molecule(Coordinate, Atom):
             _zPos = float(_atomInfo[2])
             _Position = Coordinate(_xPos, _yPos, _zPos)
             # Set grid position of atom in 3D coordinates
-            _Grid = self.calculateGrid(_xPos, _yPos, _zPos, gridSize, originX, originY, originZ)
+            _Grid = self.calculateGrid(_xPos, _yPos, _zPos)
             # Extract atom type from molfile
             _atomName = _atomInfo[3]
             # not applicable to molfile
@@ -98,16 +204,19 @@ class Molecule(Coordinate, Atom):
             # Append atom to array
             _Atoms.append(Atom(_atomName,_atomType, _Position, _Grid))
 
+        self.atomCount = len(_Atoms)
         return _Atoms
 
     # convert molecule from PDB coordinate format to grid format
-    def parsePDBfile(self, pdbFile, gridSize, originX, originY, originZ):
+    def parsePDBfile(self, pdbFile, score, dateCreated):
+        self.score = float(score)
+        self.dateCreated = dateCreated
         # Split pdb file into array of lines
-        atomArray = pdbFile.splitlines()
+        _atomArray = pdbFile.splitlines()
         # Extract atom block into array of Atom objects
-        _Atoms = []
-        for i in range(len(atomArray[:-1])):
-            _atomInfo = atomArray[i].split()
+        self.Atoms = []
+        for i in range(len(_atomArray[:-1])):
+            _atomInfo = _atomArray[i].split()
             # Extract atom type
             _atomName = _atomInfo[2]
             _atomType = _atomInfo[11]
@@ -117,31 +226,33 @@ class Molecule(Coordinate, Atom):
             _zPos = float(_atomInfo[7])
             _Position = Coordinate(_xPos, _yPos, _zPos)
             # Set grid position of atom in 3D coordinates
-            _Grid = self.calculateGrid(_xPos, _yPos, _zPos, gridSize, originX, originY, originZ)
+            _Grid = self.calculateGrid(_xPos, _yPos, _zPos)
             # Append atom to array
-            _Atoms.append(Atom(_atomName,_atomType, _Position, _Grid))
+            self.Atoms.append(Atom(_atomName,_atomType, _Position, _Grid))
 
-        return _Atoms
+        self.atomCount = len(self.Atoms)
+        return self.Atoms
 
-    def calculateGrid(self, posX, posY, posZ, gridSize, originX, originY, originZ):
-        _gridSize = float(gridSize)
+    def generateMolecule(self, moleculeGrid):
+        _pdbFile = FormatPDB(moleculeGrid, self.Container, self.gridSize)
+        return _pdbFile.createPDB()
 
+    # def `getPDB`(self):
+    #     return self.moleculePDB
+
+    def calculateGrid(self, posX, posY, posZ):
         _xPosition = float(posX)
         _yPosition = float(posY)
         _zPosition = float(posZ)
 
-        _xOrigin = float(originX)
-        _yOrigin = float(originY)
-        _zOrigin = float(originZ)
-
         # calculate distance from origin
-        _xDelta = float(_xPosition - _xOrigin)
-        _yDelta = float(_yPosition - _yOrigin)
-        _zDelta = float(_zPosition - _zOrigin)
+        _xDelta = float(_xPosition - self.Container.getX())
+        _yDelta = float(_yPosition - self.Container.getY())
+        _zDelta = float(_zPosition - self.Container.getZ())
         # calculate grid position
-        _xGrid = int(_xDelta / _gridSize)
-        _yGrid = int(_yDelta / _gridSize)
-        _zGrid = int(_zDelta / _gridSize)
+        _xGrid = int(_xDelta / self.gridSize)
+        _yGrid = int(_yDelta / self.gridSize)
+        _zGrid = int(_zDelta / self.gridSize)
 
         # create grid object
         _Grid = Coordinate(_xGrid, _yGrid, _zGrid)
@@ -158,14 +269,8 @@ class Molecule(Coordinate, Atom):
             _xPosition = float(_Position.getX())
             _yPosition = float(_Position.getY())
             _zPosition = float(_Position.getZ())
-            # get Container object
-            _Container = self.getContainer()
-            # extract coordinates from Container object
-            _xContainer = float(_Container.getX())
-            _yContainer = float(_Container.getY())
-            _zContainer = float(_Container.getZ())
             # calculate new grid coordinates
-            _Grid = self.calculateGrid(_xPosition, _yPosition, _zPosition, self.gridSize, _xContainer, _yContainer, _zContainer)
+            _Grid = self.calculateGrid(_xPosition, _yPosition, _zPosition)
             # extract coordinates from Grid object
             _xGrid = int(_Grid.getX())
             _yGrid = int(_Grid.getY())
@@ -174,7 +279,7 @@ class Molecule(Coordinate, Atom):
             _Atom.setGrid(_xGrid, _yGrid, _zGrid)
 
     def getAtomCount(self):
-        return len(self.Atoms)
+        return self.atomCount
 
     def getGrid(self, x, y, z):
         # loop over each Atom object in array to find match

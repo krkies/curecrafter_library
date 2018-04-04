@@ -33,8 +33,8 @@ class GraphQLClient:
 class Network(GraphQLClient):
 
     def __init__(self):
-        #self.endpoint = 'http://localhost:3000/graphql'
-        self.endpoint = 'http://www.curecrafter.com/graphql'
+        self.endpoint = 'http://localhost:3000/graphql'
+        #self.endpoint = 'http://www.curecrafter.com/graphql'
 
         self.client = GraphQLClient(self.endpoint)
         self.queryName = 'boardQuery'

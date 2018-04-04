@@ -3,15 +3,20 @@ import numpy as np
 import json
 
 #
-def generateMolecule(jsonData, gridSize, originX, originY, originZ):
+def generateGrid(jsonData, gridSize, originX, originY, originZ):
     # parse json data to numpy array
-    moleculeArray = applyParse(jsonData, gridSize, originX, originY, originZ)
-    # create new molecule by best atom at each grid location
-    moleculeCreated = applyGrid(moleculeArray)
+    return applyParse(jsonData, gridSize, originX, originY, originZ)
+
+#
+def generateMolecule(moleculeGrid, gridSize, originX, originY, originZ):
+    # create new molecule using best atom at each grid location
+    moleculeSelected = applySelection(moleculeGrid)
     # delete grids with atoms below threshold
-    moleculeFiltered = applyThreshold(moleculeCreated, 135)
+    moleculeFiltered = applyThreshold(moleculeSelected, 100)
     # create PDB file from numpy array
-    return applyPDB(moleculeFiltered, gridSize, originX, originY, originZ)
+    moleculeCreated = Molecule(gridSize, originX, originY, originZ)
+    moleculePDB = moleculeCreated.generateMolecule(moleculeFiltered)
+    return moleculePDB
 
 #
 def applyParse(jsonData, gridSize, originX, originY, originZ):
@@ -32,7 +37,9 @@ def applyParse(jsonData, gridSize, originX, originY, originZ):
     moleculeList = []
     for i in dataArray:
         if i[pdbName] and i[scoreName]:
-            moleculeList.append(Molecule('pdb', i[pdbName], i[scoreName], i[dateName], gridSize, originX, originY, originZ))
+            molecule = Molecule(gridSize, originX, originY, originZ)
+            molecule.parsePDBfile(i[pdbName], i[scoreName], i[dateName])
+            moleculeList.append(molecule)
 
     # count all atoms in all input files
     totalAtomCount = 0
@@ -52,24 +59,24 @@ def applyParse(jsonData, gridSize, originX, originY, originZ):
 
     return moleculeArray
 
-# find best atom type for each grid location
-def applyGrid(moleculeArray):
+# select best atom type for each grid location
+def applySelection(moleculeArray):
     # count unique grid locations
     uniqueGrids = np.unique(moleculeArray[:,:-1], axis = 0)
     # create empty array of scores, default filled with zero
     uniqueScores = np.zeros([len(uniqueGrids),2], dtype = float)
-    #
+    # store number of unique grids
     countGrid = range(len(uniqueGrids))
 
     atomCount = 0
     printCount = 1
     lengthArray = len(moleculeArray)
     for row in moleculeArray:
-        atomCount += 1
-        if atomCount == printCount:
-            printCount += 100
-            remainingCount = lengthArray - atomCount
-            print '{} : {} : {}'.format(lengthArray, atomCount, remainingCount)
+        # atomCount += 1
+        # if atomCount == printCount:
+        #     printCount += 100
+        #     remainingCount = lengthArray - atomCount
+        #     print '{} : {} : {}'.format(lengthArray, atomCount, remainingCount)
 
         for i in countGrid:
             if (np.all(row[:-1] == uniqueGrids[i])):
@@ -96,61 +103,3 @@ def applyGrid(moleculeArray):
 #
 def applyThreshold(molecule, threshold):
     return np.delete(molecule, np.where(molecule[:, 2].astype(float)<threshold), axis = 0)
-
-# create PDB file format from CureCrafter grid format
-def applyPDB(moleculeArray, gridSize, originX, originY, originZ):
-    _moleculePDB = ''
-
-    # overwrite atom type
-    _index = 1
-    for _row in moleculeArray:
-        _sequenceNumber = str(_index).rjust(5)
-        _atomName = _row[1]
-        if (_atomName == 'NA'):
-            _atomName = 'N'.ljust(3)
-        elif (_atomName == 'HD'):
-            _atomName = 'H'.ljust(3)
-        elif (_atomName == 'OA'):
-            _atomName = 'O'.ljust(3)
-        else:
-            _atomName = _atomName.ljust(3)
-
-        # grid coordinates
-        # round coordinates to fit in PDB file
-        _coords = _row[0].split()
-        if (float(_coords[0]) < 0):
-            _xCoord = str(round(float(_coords[0]) * gridSize + originX - 0.5 * gridSize,5)).rjust(8)
-        else:
-            _xCoord = str(round(float(_coords[0]) * gridSize + originX + 0.5 * gridSize,5)).rjust(8)
-        if (float(_coords[1]) < 0):
-            _yCoord = str(round(float(_coords[1]) * gridSize + originY - 0.5 * gridSize,5)).rjust(8)
-        else:
-            _yCoord = str(round(float(_coords[1]) * gridSize + originY + 0.5 * gridSize,5)).rjust(8)
-        if (float(_coords[2]) < 0):
-            _zCoord = str(round(float(_coords[2]) * gridSize + originZ - 0.5 * gridSize,5)).rjust(8)
-        else:
-            _zCoord = str(round(float(_coords[2]) * gridSize + originZ + 0.5 * gridSize,5)).rjust(8)
-
-        # symbol?
-        _symbol = _row[1].ljust(2)
-
-        # construct pdb atom entry
-        _alternateIndicator = " "
-        _chainIdentifier = " "
-        _residueSequence = "1".rjust(4)
-        _residueInsertions = " "
-        _occupancy = "0".rjust(6)
-        _temperatureFactor = "0".rjust(6)
-        _segmentIdentifier = "0".ljust(4)
-        _atomEntry = "ATOM" + "  " + _sequenceNumber + "  " + _atomName + _alternateIndicator + "LIG" + _chainIdentifier + _residueSequence + _residueInsertions + "   " + _xCoord + _yCoord + _zCoord + _occupancy + _temperatureFactor + "      " + _segmentIdentifier + "  " + _symbol + "\n"
-
-        # insert atom row into pdb molecule
-        _moleculePDB += _atomEntry
-
-        # increment row
-        _index += 1
-
-    # append pdb termination line
-    _moleculePDB += ("END" + "\n")
-
-    return _moleculePDB
