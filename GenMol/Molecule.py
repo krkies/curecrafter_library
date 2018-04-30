@@ -64,6 +64,7 @@ class FormatPDB(object):
 
     def createPDB(self):
         for _index, _row in enumerate(self.moleculeArray):
+            print _row
             _sequenceNumber = str(_index).rjust(5)
             _atomName = self.getAtomName(_row[1])
             _symbol = _row[1].ljust(2)
@@ -75,7 +76,7 @@ class FormatPDB(object):
             _occupancy = "0".rjust(6)
             _temperatureFactor = "0".rjust(6)
             _segmentIdentifier = "0".ljust(4)
-            _atomEntry = "ATOM" + "  " + _sequenceNumber + "  " + _atomName + _alternateIndicator + "LIG" + _chainIdentifier + _residueSequence + _residueInsertions + "   " + _coord.getX() + _coord.getY() + _coord.getZ() + _occupancy + _temperatureFactor + "      " + _segmentIdentifier + "  " + _symbol + "\n"
+            _atomEntry = "ATOM" + "  " + _sequenceNumber + "  " + _atomName + _alternateIndicator + "LIG" + _chainIdentifier + _residueSequence + _residueInsertions + "   " + _coord.getX() + _coord.getY() + _coord.getZ() + _occupancy + _temperatureFactor + "      " + _sequenceNumber + "  " + _symbol + "\n"
             self.moleculePDB += _atomEntry
             #
             self.bonds += self.getBonds(_row[0], _sequenceNumber)
@@ -141,15 +142,15 @@ class FormatPDB(object):
 
     def createBonds(self, NeighborCoordinates, sequenceNumber):
         _bondList = ''
-        _sequenceNumber = sequenceNumber.rjust(5)
+        _sequenceNumber = sequenceNumber.rjust(4)
 
         for _index, _row in enumerate(self.moleculeArray):
             _rowCoord = _row[0]
             if _rowCoord in NeighborCoordinates:
-                _indexNumber = str(_index).rjust(5)
-                _bond = "CONECT" + " " + _sequenceNumber + " " + _indexNumber + "\n"
+                _indexNumber = str(_index).rjust(4)
+                _bond = "CONECT" + _sequenceNumber + " " + _indexNumber + "\n"
                 # prevent duplicate bonds
-                _bondInverse = "CONECT" + " " + _indexNumber + " " + _sequenceNumber + "\n"
+                _bondInverse = "CONECT" + _indexNumber + " " + _sequenceNumber + "\n"
                 if _bondInverse not in self.bonds:
                     _bondList += _bond
 

@@ -1,27 +1,45 @@
 from Endpoint import app
 from Network import Network
 from GenMol import GenMol
-from datetime import datetime
+import numpy as np
 
 @app.route('/')
 def root():
-    return datetime.now().strftime("%A, %d %b %Y %l:%M %p")
+    return "SERVER ACTIVE"
 
-@app.route('/run')
-def run():
-    # Score molecules must exceed
-    thresholdValue = 135
-    #Constants
+@app.route('/run/<gameNum>')
+def run(gameNum):
+    # Constants
     gridSize = 1.5
-    xOrigin = 18
-    yOrigin = -35
-    zOrigin = -18
 
-    network = Network.Network()
-    rawData = network.downloadMolecules()
+    endpointLocal = 'http://localhost:3000/graphql'
+    endpointCloud = 'http://www.curecrafter.com/graphql'
+    network = getNetwork(endpointCloud)
+    # receptorData = network.getGameReceptor(gameNum)
+    receptorData = ''
+    moleculeData = network.getGameMolecules(gameNum)
 
-    moleculeGrid = GenMol.generateGrid(rawData, gridSize, xOrigin, yOrigin, zOrigin)
-    moleculeCreated = GenMol.generateMolecule(moleculeGrid, gridSize, xOrigin, yOrigin, zOrigin)
+    # MoleculeGrid = GenMol.GenMol(gameNum, gridSize, receptorData, moleculeData)
+    MoleculeGrid = GenMol.GenMol(gameNum, gridSize, receptorData, moleculeData)
+    threshold = MoleculeGrid.getAvgThreshold()
+
+    print threshold
+    print MoleculeGrid.getStandardDeviation()
+    moleculeCreated = MoleculeGrid.generateMolecule(120)
     print moleculeCreated
 
     return moleculeCreated
+
+def getNetwork(endpoint):
+    try:
+        network
+    except:
+        return Network.Network(endpoint)
+    return network
+
+def getGrid(data, gridSize, Origins):
+    try:
+        moleculeGrid
+    except:
+        return GenMol.generateGrid(data, gridSize, Origins)
+    return moleculeGrid

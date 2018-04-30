@@ -30,16 +30,30 @@ class GraphQLClient:
             print('')
             # raise e
 
-class Network(GraphQLClient):
+class DataCache(object):
 
-    def __init__(self):
-        self.endpoint = 'http://localhost:3000/graphql'
-        #self.endpoint = 'http://www.curecrafter.com/graphql'
+    def __init__(self, gameNumber, client):
+        self.gameNumber = gameNumber
+        self.client = client
+        self.cachedMolecules = ''
+        self.cachedReceptor = ''
 
-        self.client = GraphQLClient(self.endpoint)
-        self.queryName = 'boardQuery'
+    def downloadReceptor(self):
+        variables = { "game": self.gameNumber }
+        query = '''
+        query receptorQuery($game: Int!) {
+          receptorQuery(game: $game) {
+            receptorX
+            receptorY
+            receptorZ
+          }
+        }
+        '''
+        self.cachedReceptor = self.client.execute(query, variables)
+        return self.getCachedReceptor()
 
     def downloadMolecules(self):
+        variables = { "game": self.gameNumber }
         query = '''
         query boardQuery($game: Int!) {
           boardQuery(game: $game) {
@@ -49,9 +63,47 @@ class Network(GraphQLClient):
           }
         }
         '''
+        self.cachedMolecules = self.client.execute(query, variables)
+        return self.getCachedMolecules()
 
-        variables = { "game": 1 }
+    def getGameNumber(self):
+        return self.gameNumber
 
-        data = self.client.execute(query, variables)
+    def getCachedMolecules(self):
+        if self.cachedMolecules == '':
+            return self.downloadMolecules()
+        return self.cachedMolecules
 
-        return data
+    def getCachedReceptor(self):
+        if self.cachedReceptor == '':
+            return self.downloadReceptor()
+        return self.cachedReceptor
+
+class Network(GraphQLClient, DataCache):
+
+    def __init__(self, endpoint):
+        self.endpoint = endpoint
+        self.client = GraphQLClient(self.endpoint)
+        self.gameData = []
+
+    def getGameMolecules(self, gameNumber):
+        for _game in self.gameData:
+            if _game.getGameNumber() == gameNumber:
+                return _game.getCachedMolecules()
+        _newGame = DataCache(gameNumber, self.client)
+        self.gameData.append(_newGame)
+        return _newGame.downloadMolecules()
+
+    def getGameReceptor(self, gameNumber):
+        for _game in self.gameData:
+            if _game.getGameNumber() == gameNumber:
+                return _game.getCachedReceptor()
+        _newGame = DataCache(gameNumber, self.client)
+        self.gameData.append(_newGame)
+        return _newGame.downloadReceptor()
+
+    def getEndpoint(self):
+        return self.endpoint
+
+    def setEndpoint(self, endpoint):
+        self.endpoint = endpoint
