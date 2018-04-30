@@ -1,121 +1,179 @@
-from Molecule import Molecule
+from .Molecule import Molecule
 import numpy as np
+import json
 
-# create PDB file format from CureCrafter grid format
-def createPDB(self, moleculeArray, gridSize, originX, originY, originZ):
-    # overwrite atom type
-    _index = 1
-    for _row in moleculeArray:
-        _sequenceNumber = str(_index).rjust(5)
-        _atomName = _row[1]
-        if (_atomName == 'NA'):
-            _atomName = 'N'.ljust(4)
-        elif (_atomName == 'HD'):
-            _atomName = 'H'.ljust(4)
-        elif (_atomName == 'OA'):
-            _atomName = 'O'.ljust(4)
-        else:
-            _atomName = _atomName.ljust(4)
+class Coordinate(object):
 
-        # grid coordinates
-        _coords = _row[0].split()
-        if (float(_coords[0]) < 0):
-            _xCoord = str(float(_coords[0]) * gridSize + originX - 0.5 * gridSize).rjust(8)
-        else:
-            _xCoord = str(float(_coords[0]) * gridSize + originX + 0.5 * gridSize).rjust(8)
-        if (float(_coords[1]) < 0):
-            _yCoord = str(float(_coords[1]) * gridSize + originY - 0.5 * gridSize).rjust(8)
-        else:
-            _yCoord = str(float(_coords[1]) * gridSize + originY + 0.5 * gridSize).rjust(8)
-        if (float(_coords[2]) < 0):
-            _zCoord = str(float(_coords[2]) * gridSize + originZ - 0.5 * gridSize).rjust(8)
-        else:
-            _zCoord = str(float(_coords[2]) * gridSize + originZ + 0.5 * gridSize).rjust(8)
+    def __init__(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
 
-        # symbol?
-        _symbol = row[1].rjust(2)
+    def getX(self):
+        return self.x
 
-        # construct pdb atom entry
-        _alternateIndicator = " "
-        _chainIdentifier = " "
-        _residueSequence = "1".rjust(4)
-        _residueInsertions = " "
-        _occupancy = "0".rjust(6)
-        _temperatureFactor = "0".rjust(6)
-        _segmentIdentifier = "0".ljust(4)
-        _atomEntry = "ATOM" + "  " + _sequenceNumber + " " + _atomName + _alternateIndicator + "LIG" + " " + _chainIdentifier + _residueSequence + _residueInsertions + "   " + xCoord + yCoord + zCoord + _occupancy + _temperatureFactor + "      " + _segmentIdentifier + _symbol + "\n"
+    def getY(self):
+        return self.y
 
-        # insert atom row into pdb molecule
-        _moleculePDB.append(_atomEntry)
+    def getZ(self):
+        return self.z
 
-        # increment row
-        _index += 1
+    def setCoordinates(self, x, y, z):
+        self.x = x
+        self.y = y
+        self.z = z
 
-    # append pdb termination line
-    _moleculePDB.append("END" + "\n")
+class GenMol(Coordinate):
 
-    return _moleculePDB
+    def __init__(self, gameNumber, gridSize, receptorData, moleculeData):
+        self.gameNumber = gameNumber
+        self.gridSize = gridSize
+        self.moleculeQuery = 'boardQuery'
+        self.moleculePDB = 'molDock'
+        self.moleculeDate = 'dockEnded'
+        self.moleculeScore = 'score'
+        self.receptorQuery = 'receptorQuery'
+        self.receptorX = 'receptorX'
+        self.receptorY = 'receptorY'
+        self.receptorZ = 'receptorZ'
+        # self.Origins = self.parseReceptorData(receptorData)
+        self.Origins = Coordinate(18, -35, -18)
+        # self.MoleculeGrid = self.parseMoleculeData(moleculeData)
+        self.MoleculeGrid = self.getGridFile()
+        self.threshold = self.getAvgThreshold()
+
+    def saveGridFile(self):
+        self.GridFile = np.save('gridFile.npy', self.MoleculeGrid)
+        return self.GridFile
+
+    def getGridFile(self):
+        return np.load('gridFile.npy')
 
 
-# find best atom type for each grid location
-def generateMolecule(listOfFiles, listOfScores, threshold, gridSize, originX, originY, originZ):
-    #  1) Prepare list of input molecules
-    #  2) Database of all atoms: type, grid location, and score
-    #  3) Database of unique grid/atom type combinations
-    #  4) Array of best atom type for each grid location
-    #  5) Threshold removes atoms/grids with low scores
-    #  6) Create PDB file
+    #
+    def parseMoleculeData(self, jsonData):
+        # parse json data to python
+        _parsedJson = json.loads(jsonData)
+        # error check for mislabeled data structure
+        if not _parsedJson['data'][self.moleculeQuery][0][self.moleculePDB]:
+            print 'JSON Formatting Error - key names should be: {}, {}, {}'.format(self.moleculePDB, self.moleculeData, self.moleculeScore)
+            print data['data'][self.moleculePDB][0]
+        #
+        _dataArray = _parsedJson['data'][self.moleculeQuery]
+        # create list of molecule objects
+        _moleculeList = []
+        for i in _dataArray:
+            if i[self.moleculePDB] and i[self.moleculeScore]:
+                _molecule = Molecule(self.gridSize, self.Origins.getX(), self.Origins.getY(), self.Origins.getZ())
+                _molecule.parsePDBfile(i[self.moleculePDB], i[self.moleculeScore], i[self.moleculeDate])
+                _moleculeList.append(_molecule)
 
-    # 1) populate listOfMolecules with pdb files & scores
-    listOfMolecules = []
-    for i in range(len(listOfFiles)):
-        #construct new molecule for each pdb file
-        listOfMolecules.append(Molecule('pdb', listOfFiles[i], listOfScores[i], gridSize, originX, originY, originZ))
+        # count all atoms in all input files
+        _totalAtomCount = 0
+        for i in _moleculeList:
+            _totalAtomCount += i.getAtomCount()
 
-    # 2) populate scoreBank (rows = atom, columns = type, grid, score)
-    totalAtomCount = 0
-    for i in listOfMolecules:
-        totalAtomCount += i.getAtomCount()
-    scoreBank = np.empty([totalAtomCount,3], dtype='<U100')
+        # populate moleculeArray (rows = atom, columns = type, grid, score)
+        _moleculeArray = np.empty([_totalAtomCount,3], dtype='<U100')
+        _index = 0
+        for _molecule in _moleculeList:
+            _currentScore = _molecule.getScore()
+            for _atom in _molecule.getAtoms():
+                _moleculeArray[_index,0] = str(_atom.getAtomType())
+                _moleculeArray[_index,1] = str(_atom.getGrid().getX()) + " " + str(_atom.getGrid().getY()) + " " + str(_atom.getGrid().getZ())
+                _moleculeArray[_index,2] = _currentScore
+                _index += 1
 
-    index = 0
-    for singleMolecule in listOfMolecules:
-        currentScore = singleMolecule.getScore()
-        for atom in singleMolecule.getAtoms():
-            scoreBank[index,0] = str(atom.getAtomType())
-            scoreBank[index,1] = str(atom.getGrid().getX()) + " " + str(atom.getGrid().getY()) + " " + str(atom.getGrid().getZ())
-            scoreBank[index,2] = currentScore
-            index += 1
+        self.MoleculeGrid = _moleculeArray
+        self.MoleculeGrid = self.getSelectedGrid()
+        self.saveGridFile()
+        return self.MoleculeGrid
 
-    # 3) populate atom type grid locations with averages
-    uniqueGrids = np.unique(scoreBank[:,:-1], axis = 0)
-    uniqueScores = np.zeros([len(uniqueGrids),2], dtype = float)
+    #
+    def parseReceptorData(self, jsonData):
+        # parse json data to python
+        _parsedJson = json.loads(jsonData)
+        #
+        _dataArray = _parsedJson['data'][self.receptorQuery]
+        #
+        _Orient = Coordinate(_dataArray[self.receptorX], _dataArray[self.receptorY], _dataArray[self.receptorZ])
+        return _Orient
 
-    for row in scoreBank:
-        for i in range(len(uniqueGrids)):
-            if(np.all(row[:-1] == uniqueGrids[i])):
-                temp = (uniqueScores[i,0] * uniqueScores[i,1]) + float(row[2])
-                uniqueScores[i,1] += 1
-                uniqueScores[i,0] = temp/uniqueScores[i,1]
-    uniqueDatabase = np.column_stack((uniqueGrids, uniqueScores))
+    #
+    def getMoleculeGrid(self):
+        return self.MoleculeGrid
 
-    # 4) populate new molecule -- best score at each grid location
-    uniqueGridLocation = np.unique(uniqueDatabase[:,1])
-    gridContents = np.empty(len(uniqueGridLocation))
-    molScore = np.zeros(len(uniqueGridLocation))
-    newMolecule = np.column_stack((uniqueGridLocation, gridContents, molScore))
+    def getSelectedGrid(self):
+        _selectedGrid = self.applySelection()
+        self.MoleculeGrid = _selectedGrid
+        return self.MoleculeGrid
 
-    for grid in range(len(uniqueGridLocation)):
-        for i in range(len(uniqueDatabase[:,1])):
-            if (newMolecule[grid,0] == uniqueDatabase[i,1]):
-                if(float(uniqueDatabase[i,2]) > float(newMolecule[grid,2])):
-                    newMolecule[grid, 1] = uniqueDatabase[i,0]
-                    newMolecule[grid, 2] = float(uniqueDatabase[i,2])
+    #
+    def getOrigins(self):
+        return self.Origins
 
-    # 5) delete grids with atoms below threshold
-    arrayMolecule = np.delete(newMolecule, np.where(newMolecule[:, 2].astype(float)<threshold), axis = 0)
+    #
+    def getAvgThreshold(self):
+        _scores = self.MoleculeGrid[:,2].astype(np.float)
+        self.avgScore = _scores.mean()
+        self.stdScore = _scores.std()
+        self.threshold = self.avgScore
+        return self.threshold
 
-    # 6) create PDB
-    pdbMolecule = createPDB(arrayMolecule, gridSize, originX, originY, originZ)
+    #
+    def getStandardDeviation(self):
+        return self.stdScore
 
-    return pdbMolecule
+    #
+    def generateMolecule(self, threshold):
+        # delete grids with atoms below threshold
+        _moleculeFiltered = self.applyThreshold(threshold)
+        # create PDB file from numpy array
+        _moleculeCreated = Molecule(self.gridSize, self.Origins.getX(),  self.Origins.getY(),  self.Origins.getZ())
+        _moleculePDB = _moleculeCreated.generateMolecule(_moleculeFiltered)
+        return _moleculePDB
+
+    # select best atom type for each grid location
+    def applySelection(self):
+        # count unique grid locations
+        uniqueGrids = np.unique(self.MoleculeGrid[:,:-1], axis = 0)
+        # create empty array of scores, default filled with zero
+        uniqueScores = np.zeros([len(uniqueGrids),2], dtype = float)
+        # store number of unique grids
+        countGrid = range(len(uniqueGrids))
+
+        atomCount = 0
+        printCount = 1
+        lengthArray = len(self.MoleculeGrid)
+        for row in self.MoleculeGrid:
+            atomCount += 1
+            if atomCount == printCount:
+                printCount += 100
+                remainingCount = lengthArray - atomCount
+                print '{} : {} : {}'.format(lengthArray, atomCount, remainingCount)
+
+            for i in countGrid:
+                if (np.all(row[:-1] == uniqueGrids[i])):
+                    temp = (uniqueScores[i,0] * uniqueScores[i,1]) + float(row[2])
+                    uniqueScores[i,1] += 1
+                    uniqueScores[i,0] = temp/uniqueScores[i,1]
+        uniqueDatabase = np.column_stack((uniqueGrids, uniqueScores))
+
+        # populate created molecule -- best score at each grid location
+        uniqueGridLocation = np.unique(uniqueDatabase[:,1])
+        gridContents = np.empty(len(uniqueGridLocation))
+        moleculeScore = np.zeros(len(uniqueGridLocation))
+        moleculeSelected = np.column_stack((uniqueGridLocation, gridContents, moleculeScore))
+
+        for grid in range(len(uniqueGridLocation)):
+            for i in range(len(uniqueDatabase[:,1])):
+                if (moleculeSelected[grid,0] == uniqueDatabase[i,1]):
+                    if (float(uniqueDatabase[i,2]) > float(moleculeSelected[grid,2])):
+                        moleculeSelected[grid, 1] = uniqueDatabase[i,0]
+                        moleculeSelected[grid, 2] = float(uniqueDatabase[i,2])
+
+        return moleculeSelected
+
+    #
+    def applyThreshold(self, threshold):
+        return np.delete(self.MoleculeGrid, np.where(self.MoleculeGrid[:, 2].astype(float)<threshold), axis = 0)
