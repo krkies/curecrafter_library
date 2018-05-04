@@ -38,8 +38,8 @@ class GenMol(Coordinate):
         self.receptorZ = 'receptorZ'
         # self.Origins = self.parseReceptorData(receptorData)
         self.Origins = Coordinate(18, -35, -18)
-        # self.MoleculeGrid = self.parseMoleculeData(moleculeData)
-        self.MoleculeGrid = self.getGridFile()
+        self.MoleculeGrid = self.parseMoleculeData(moleculeData)
+        # self.MoleculeGrid = self.getGridFile()
         self.threshold = self.getAvgThreshold()
 
     # generate molecule (PDB file) from grid by selecting atoms in grid by position
