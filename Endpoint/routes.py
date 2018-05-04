@@ -19,14 +19,12 @@ def run(gameNum):
     receptorData = ''
     moleculeData = network.getGameMolecules(gameNum)
 
-    # MoleculeGrid = GenMol.GenMol(gameNum, gridSize, receptorData, moleculeData)
+    # ----------------------------
+    # MAIN FUNCTIONS
+    # ----------------------------
     MoleculeGrid = GenMol.GenMol(gameNum, gridSize, receptorData, moleculeData)
     threshold = MoleculeGrid.getAvgThreshold()
-
-    print threshold
-    print MoleculeGrid.getStandardDeviation()
-    moleculeCreated = MoleculeGrid.generateMolecule(120)
-    print moleculeCreated
+    moleculeCreated = MoleculeGrid.generateMolecule(threshold)
 
     return moleculeCreated
 

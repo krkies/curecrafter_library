@@ -42,13 +42,60 @@ class GenMol(Coordinate):
         self.MoleculeGrid = self.getGridFile()
         self.threshold = self.getAvgThreshold()
 
+    # generate molecule (PDB file) from grid by selecting atoms in grid by position
+    def generateMolecule(self, threshold):
+        # delete grids with atoms below threshold
+        _moleculeFiltered = self.applyThreshold(threshold)
+        # create PDB file from numpy array
+        _moleculeCreated = Molecule(self.gridSize, self.Origins.getX(),  self.Origins.getY(),  self.Origins.getZ())
+        _moleculePDB = _moleculeCreated.generateMolecule(_moleculeFiltered)
+        return _moleculePDB
+
+    # save numpy array file to cache
     def saveGridFile(self):
         self.GridFile = np.save('gridFile.npy', self.MoleculeGrid)
         return self.GridFile
 
-    def getGridFile(self):
-        return np.load('gridFile.npy')
+    # select best atom type for each grid location
+    def applySelection(self):
+        # count unique grid locations
+        uniqueGrids = np.unique(self.MoleculeGrid[:,:-1], axis = 0)
+        # create empty array of scores, default filled with zero
+        uniqueScores = np.zeros([len(uniqueGrids),2], dtype = float)
+        # store number of unique grids
+        countGrid = range(len(uniqueGrids))
 
+        # -------> this is inefficient! use numpy array here... NOT nested for loop
+        # KELBY.. START HERE :)
+        lengthArray = len(self.MoleculeGrid)
+        for row in self.MoleculeGrid:
+            for i in countGrid:
+                if (np.all(row[:-1] == uniqueGrids[i])):
+                    temp = (uniqueScores[i,0] * uniqueScores[i,1]) + float(row[2])
+                    uniqueScores[i,1] += 1
+                    uniqueScores[i,0] = temp/uniqueScores[i,1]
+        uniqueDatabase = np.column_stack((uniqueGrids, uniqueScores))
+
+        # populate created molecule -- best score at each grid location
+        uniqueGridLocation = np.unique(uniqueDatabase[:,1])
+        gridContents = np.empty(len(uniqueGridLocation))
+        moleculeScore = np.zeros(len(uniqueGridLocation))
+        moleculeSelected = np.column_stack((uniqueGridLocation, gridContents, moleculeScore))
+
+        # -------> this is inefficient! use numpy array here... NOT nested for loop
+        # KELBY.. REPLACe NUMPY HERE TOO :)
+        for grid in range(len(uniqueGridLocation)):
+            for i in range(len(uniqueDatabase[:,1])):
+                if (moleculeSelected[grid,0] == uniqueDatabase[i,1]):
+                    if (float(uniqueDatabase[i,2]) > float(moleculeSelected[grid,2])):
+                        moleculeSelected[grid, 1] = uniqueDatabase[i,0]
+                        moleculeSelected[grid, 2] = float(uniqueDatabase[i,2])
+
+        return moleculeSelected
+
+    #
+    def applyThreshold(self, threshold):
+        return np.delete(self.MoleculeGrid, np.where(self.MoleculeGrid[:, 2].astype(float)<threshold), axis = 0)
 
     #
     def parseMoleculeData(self, jsonData):
@@ -99,10 +146,15 @@ class GenMol(Coordinate):
         _Orient = Coordinate(_dataArray[self.receptorX], _dataArray[self.receptorY], _dataArray[self.receptorZ])
         return _Orient
 
+    # open numpy array file from cache
+    def getGridFile(self):
+        return np.load('gridFile.npy')
+
     #
     def getMoleculeGrid(self):
         return self.MoleculeGrid
 
+    #
     def getSelectedGrid(self):
         _selectedGrid = self.applySelection()
         self.MoleculeGrid = _selectedGrid
@@ -123,57 +175,3 @@ class GenMol(Coordinate):
     #
     def getStandardDeviation(self):
         return self.stdScore
-
-    #
-    def generateMolecule(self, threshold):
-        # delete grids with atoms below threshold
-        _moleculeFiltered = self.applyThreshold(threshold)
-        # create PDB file from numpy array
-        _moleculeCreated = Molecule(self.gridSize, self.Origins.getX(),  self.Origins.getY(),  self.Origins.getZ())
-        _moleculePDB = _moleculeCreated.generateMolecule(_moleculeFiltered)
-        return _moleculePDB
-
-    # select best atom type for each grid location
-    def applySelection(self):
-        # count unique grid locations
-        uniqueGrids = np.unique(self.MoleculeGrid[:,:-1], axis = 0)
-        # create empty array of scores, default filled with zero
-        uniqueScores = np.zeros([len(uniqueGrids),2], dtype = float)
-        # store number of unique grids
-        countGrid = range(len(uniqueGrids))
-
-        atomCount = 0
-        printCount = 1
-        lengthArray = len(self.MoleculeGrid)
-        for row in self.MoleculeGrid:
-            atomCount += 1
-            if atomCount == printCount:
-                printCount += 100
-                remainingCount = lengthArray - atomCount
-                print '{} : {} : {}'.format(lengthArray, atomCount, remainingCount)
-
-            for i in countGrid:
-                if (np.all(row[:-1] == uniqueGrids[i])):
-                    temp = (uniqueScores[i,0] * uniqueScores[i,1]) + float(row[2])
-                    uniqueScores[i,1] += 1
-                    uniqueScores[i,0] = temp/uniqueScores[i,1]
-        uniqueDatabase = np.column_stack((uniqueGrids, uniqueScores))
-
-        # populate created molecule -- best score at each grid location
-        uniqueGridLocation = np.unique(uniqueDatabase[:,1])
-        gridContents = np.empty(len(uniqueGridLocation))
-        moleculeScore = np.zeros(len(uniqueGridLocation))
-        moleculeSelected = np.column_stack((uniqueGridLocation, gridContents, moleculeScore))
-
-        for grid in range(len(uniqueGridLocation)):
-            for i in range(len(uniqueDatabase[:,1])):
-                if (moleculeSelected[grid,0] == uniqueDatabase[i,1]):
-                    if (float(uniqueDatabase[i,2]) > float(moleculeSelected[grid,2])):
-                        moleculeSelected[grid, 1] = uniqueDatabase[i,0]
-                        moleculeSelected[grid, 2] = float(uniqueDatabase[i,2])
-
-        return moleculeSelected
-
-    #
-    def applyThreshold(self, threshold):
-        return np.delete(self.MoleculeGrid, np.where(self.MoleculeGrid[:, 2].astype(float)<threshold), axis = 0)
