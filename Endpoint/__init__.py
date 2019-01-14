@@ -1,5 +1,7 @@
 from flask import Flask
 
-app = Flask(__name__)
-
-from Endpoint import routes
+def createApp(database):
+    app = Flask(__name__)
+    app.config['DATABASE'] = database
+    return app
+    

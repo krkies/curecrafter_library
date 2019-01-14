@@ -25,19 +25,14 @@ class Coordinate(object):
 
 class GenMol(Coordinate):
 
-    def __init__(self, gameNumber, gridSize, receptorData, moleculeData):
+    def __init__(self, gameNumber, gridSize):
         self.gameNumber = gameNumber
         self.gridSize = gridSize
-        self.moleculeQuery = 'boardQuery'
-        self.moleculePDB = 'molDock'
-        self.moleculeDate = 'dockEnded'
-        self.moleculeScore = 'score'
-        self.receptorQuery = 'receptorQuery'
-        self.receptorX = 'receptorX'
-        self.receptorY = 'receptorY'
-        self.receptorZ = 'receptorZ'
+        # set reference coordinates of molecule in receptor coordinates
         # self.Origins = self.parseReceptorData(receptorData)
+        # coordinatesfrom database
         self.Origins = Coordinate(18, -35, -18)
+        # generate grid of atoms for each molecule in dataset
         self.MoleculeGrid = self.parseMoleculeData(moleculeData)
         # self.MoleculeGrid = self.getGridFile()
         self.threshold = self.getAvgThreshold()
@@ -58,32 +53,38 @@ class GenMol(Coordinate):
 
     # select best atom type for each grid location
     def applySelection(self):
-        # count unique grid locations
-        uniqueGrids = np.unique(self.MoleculeGrid[:,:-1], axis = 0)
-        # create empty array of scores, default filled with zero
-        uniqueScores = np.zeros([len(uniqueGrids),2], dtype = float)
-        # store number of unique grids
-        countGrid = range(len(uniqueGrids))
+        int(_gridType) = -1
+        int(_atom) = 0
+        int(_coord) = 1
+        int(_score) = 2
+        # create empty arrays
+        uniqueScores = np.zeros([len(uniqueGrids),_score], dtype = float)
+        gridContents = np.empty(len(uniqueGridLocation))
+        moleculeScore = np.zeros(len(uniqueGridLocation))
 
-        # -------> this is inefficient! use numpy array here... NOT nested for loop
-        # KELBY.. START HERE :)
-        lengthArray = len(self.MoleculeGrid)
-        for row in self.MoleculeGrid:
-            for i in countGrid:
-                if (np.all(row[:-1] == uniqueGrids[i])):
-                    temp = (uniqueScores[i,0] * uniqueScores[i,1]) + float(row[2])
-                    uniqueScores[i,1] += 1
-                    uniqueScores[i,0] = temp/uniqueScores[i,1]
-        uniqueDatabase = np.column_stack((uniqueGrids, uniqueScores))
+        # unique grid identities -> identity is atom type at a grid location
+        uniqueGrids = np.unique(self.MoleculeGrid[:,_gridType], axis = 0)
+
+        # for each grid position in 3D space
+        for entry in self.MoleculeGrid:
+            # prevent iterating over empty grids
+            for _index, _row in enumerate(uniqueGrids):
+
+            for gridNum in gridCount:
+                # np.all - test if entry matches a unique grid
+                if (np.all(entry[:-1] == gridNum):
+                    temp = (uniqueScores[gridNum,0] * uniqueScores[gridNum,1]) + float(row[2])
+                    uniqueScores[gridNum,1] += 1
+                    uniqueScores[gridNum,0] = temp/uniqueScores[gridNum,1]
+
+        # combine both arrays to make one score for each grid identity
+        uniqueDatabase = np.column_stack(uniqueGrids, uniqueScores)
 
         # populate created molecule -- best score at each grid location
         uniqueGridLocation = np.unique(uniqueDatabase[:,1])
-        gridContents = np.empty(len(uniqueGridLocation))
-        moleculeScore = np.zeros(len(uniqueGridLocation))
         moleculeSelected = np.column_stack((uniqueGridLocation, gridContents, moleculeScore))
 
-        # -------> this is inefficient! use numpy array here... NOT nested for loop
-        # KELBY.. REPLACe NUMPY HERE TOO :)
+        # pick only one atom for each coordinate
         for grid in range(len(uniqueGridLocation)):
             for i in range(len(uniqueDatabase[:,1])):
                 if (moleculeSelected[grid,0] == uniqueDatabase[i,1]):
@@ -96,55 +97,6 @@ class GenMol(Coordinate):
     #
     def applyThreshold(self, threshold):
         return np.delete(self.MoleculeGrid, np.where(self.MoleculeGrid[:, 2].astype(float)<threshold), axis = 0)
-
-    #
-    def parseMoleculeData(self, jsonData):
-        # parse json data to python
-        _parsedJson = json.loads(jsonData)
-        # error check for mislabeled data structure
-        if not _parsedJson['data'][self.moleculeQuery][0][self.moleculePDB]:
-            print 'JSON Formatting Error - key names should be: {}, {}, {}'.format(self.moleculePDB, self.moleculeData, self.moleculeScore)
-            print data['data'][self.moleculePDB][0]
-        #
-        _dataArray = _parsedJson['data'][self.moleculeQuery]
-        # create list of molecule objects
-        _moleculeList = []
-        for i in _dataArray:
-            if i[self.moleculePDB] and i[self.moleculeScore]:
-                _molecule = Molecule(self.gridSize, self.Origins.getX(), self.Origins.getY(), self.Origins.getZ())
-                _molecule.parsePDBfile(i[self.moleculePDB], i[self.moleculeScore], i[self.moleculeDate])
-                _moleculeList.append(_molecule)
-
-        # count all atoms in all input files
-        _totalAtomCount = 0
-        for i in _moleculeList:
-            _totalAtomCount += i.getAtomCount()
-
-        # populate moleculeArray (rows = atom, columns = type, grid, score)
-        _moleculeArray = np.empty([_totalAtomCount,3], dtype='<U100')
-        _index = 0
-        for _molecule in _moleculeList:
-            _currentScore = _molecule.getScore()
-            for _atom in _molecule.getAtoms():
-                _moleculeArray[_index,0] = str(_atom.getAtomType())
-                _moleculeArray[_index,1] = str(_atom.getGrid().getX()) + " " + str(_atom.getGrid().getY()) + " " + str(_atom.getGrid().getZ())
-                _moleculeArray[_index,2] = _currentScore
-                _index += 1
-
-        self.MoleculeGrid = _moleculeArray
-        self.MoleculeGrid = self.getSelectedGrid()
-        self.saveGridFile()
-        return self.MoleculeGrid
-
-    #
-    def parseReceptorData(self, jsonData):
-        # parse json data to python
-        _parsedJson = json.loads(jsonData)
-        #
-        _dataArray = _parsedJson['data'][self.receptorQuery]
-        #
-        _Orient = Coordinate(_dataArray[self.receptorX], _dataArray[self.receptorY], _dataArray[self.receptorZ])
-        return _Orient
 
     # open numpy array file from cache
     def getGridFile(self):

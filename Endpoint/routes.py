@@ -1,23 +1,15 @@
 from Endpoint import app
-from Network import Network
 from GenMol import GenMol
-import numpy as np
 
 @app.route('/')
 def root():
     return "SERVER ACTIVE"
 
-@app.route('/run/<gameNum>')
+@app.route('/update/<int:gameNum>')
 def run(gameNum):
-    # Constants
-    gridSize = 1.5
-
-    endpointLocal = 'http://localhost:3000/graphql'
-    endpointCloud = 'http://www.curecrafter.com/graphql'
-    network = getNetwork(endpointCloud)
-    # receptorData = network.getGameReceptor(gameNum)
+    # receptorData = database.getGameReceptor(gameNum)
     receptorData = ''
-    moleculeData = network.getGameMolecules(gameNum)
+    moleculeData = database.getGameMolecules(gameNum)
 
     # ----------------------------
     # MAIN FUNCTIONS
@@ -26,18 +18,22 @@ def run(gameNum):
     threshold = MoleculeGrid.getAvgThreshold()
     moleculeCreated = MoleculeGrid.generateMolecule(threshold)
 
-    return moleculeCreated
+    return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
 
-def getNetwork(endpoint):
-    try:
-        network
-    except:
-        return Network.Network(endpoint)
-    return network
+@app.route('/generate/<int:gameNum>')
+@app.route('/generate/<int:gameNum>/<int:thresold>')
+def molecule(gameNum, threshold=None):
+    print gameNum
+    return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
 
-def getGrid(data, gridSize, Origins):
-    try:
-        moleculeGrid
-    except:
-        return GenMol.generateGrid(data, gridSize, Origins)
-    return moleculeGrid
+@app.route('/add', methods=['POST'])
+def add():
+    _data = request.get_json()
+    value1 = request_json.get('First_Name')
+    # !!! call function to insert molecule (parse + gridId algorithm)
+    return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
+
+@app.route('/status/<int:gameNum>')
+def status(gameNum):
+    print gameNum
+    return json.dumps({'success':True}), 200, {'ContentType':'application/json'}
